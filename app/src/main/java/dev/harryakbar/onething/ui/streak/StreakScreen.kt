@@ -32,7 +32,9 @@ import dev.harryakbar.onething.ui.theme.Background
 import dev.harryakbar.onething.ui.theme.OutlineColor
 import dev.harryakbar.onething.ui.theme.TextPrimary
 import dev.harryakbar.onething.ui.theme.TextSecondary
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -194,23 +196,24 @@ private fun AnimatedCalendarGrid(days: List<DayStatus>) {
     }
 
     LaunchedEffect(days.size) {
-        days.indices.forEach { i ->
-            // Wave: row-major delay so they flow left-to-right, top-to-bottom
-            val cellIndex = i + leadingEmpties
-            val delayMs = (cellIndex * 28L).coerceAtMost(700L)
-            kotlinx.coroutines.launch {
-                delay(delayMs)
-                kotlinx.coroutines.launch {
-                    cellScales[i].animateTo(
-                        1f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMedium
+        coroutineScope {
+            days.indices.forEach { i ->
+                val cellIndex = i + leadingEmpties
+                val delayMs = (cellIndex * 28L).coerceAtMost(700L)
+                launch {
+                    delay(delayMs)
+                    launch {
+                        cellScales[i].animateTo(
+                            1f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            )
                         )
-                    )
-                }
-                kotlinx.coroutines.launch {
-                    cellAlphas[i].animateTo(1f, tween(200))
+                    }
+                    launch {
+                        cellAlphas[i].animateTo(1f, tween(200))
+                    }
                 }
             }
         }
