@@ -71,6 +71,8 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
 
     testImplementation(libs.junit)
     debugImplementation(libs.compose.ui.tooling)

@@ -14,6 +14,20 @@ import javax.inject.Singleton
 @Database(entities = [DailyTask::class], version = 1, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun dailyTaskDao(): DailyTaskDao
+
+    companion object {
+        @Volatile private var INSTANCE: AppDatabase? = null
+
+        // Used by the Glance widget which runs outside the Hilt graph
+        fun getInstance(context: Context): AppDatabase =
+            INSTANCE ?: synchronized(this) {
+                INSTANCE ?: Room.databaseBuilder(
+                    context.applicationContext,
+                    AppDatabase::class.java,
+                    "one_thing_db"
+                ).build().also { INSTANCE = it }
+            }
+    }
 }
 
 @Module

@@ -1,7 +1,10 @@
 package dev.harryakbar.onething.repository
 
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.harryakbar.onething.data.DailyTask
 import dev.harryakbar.onething.data.DailyTaskDao
+import dev.harryakbar.onething.widget.WidgetUpdater
 import kotlinx.coroutines.flow.Flow
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -10,7 +13,8 @@ import javax.inject.Singleton
 
 @Singleton
 class TaskRepository @Inject constructor(
-    private val dao: DailyTaskDao
+    private val dao: DailyTaskDao,
+    @ApplicationContext private val context: Context
 ) {
     private val dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE
 
@@ -24,19 +28,19 @@ class TaskRepository @Inject constructor(
     suspend fun setTodayTask(title: String) {
         val today = LocalDate.now().format(dateFormatter)
         dao.upsert(DailyTask(date = today, title = title))
+        WidgetUpdater.update(context)
     }
 
     suspend fun completeTask(date: String) {
-        val task = dao.getByDate(date)
-        // We need a one-shot read; use a coroutine-based approach
         dao.upsert(
             DailyTask(
                 date = date,
-                title = "", // placeholder; will be overwritten by upsert preserving existing title
+                title = "",
                 isCompleted = true,
                 completedAt = System.currentTimeMillis()
             )
         )
+        WidgetUpdater.update(context)
     }
 
     suspend fun completeTodayTask(title: String) {
@@ -49,5 +53,6 @@ class TaskRepository @Inject constructor(
                 completedAt = System.currentTimeMillis()
             )
         )
+        WidgetUpdater.update(context)
     }
 }
