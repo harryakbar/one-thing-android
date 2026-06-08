@@ -49,7 +49,7 @@ class OneThingWidget : GlanceAppWidget() {
                 modifier = GlanceModifier
                     .fillMaxSize()
                     .background(BgColor)
-                    .cornerRadius(20)
+                    .cornerRadius(20.dp)
                     .clickable(openApp),
                 contentAlignment = Alignment.Center
             ) {
@@ -76,7 +76,7 @@ class OneThingWidget : GlanceAppWidget() {
                             Box(
                                 modifier = GlanceModifier
                                     .background(AccentColor)
-                                    .cornerRadius(12)
+                                    .cornerRadius(12.dp)
                                     .padding(horizontal = 14.dp, vertical = 8.dp)
                             ) {
                                 Text(
@@ -93,7 +93,7 @@ class OneThingWidget : GlanceAppWidget() {
                             modifier = GlanceModifier
                                 .fillMaxSize()
                                 .background(AccentColor)
-                                .cornerRadius(20)
+                                .cornerRadius(20.dp)
                                 .padding(horizontal = 20.dp, vertical = 16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalAlignment = Alignment.CenterHorizontally
