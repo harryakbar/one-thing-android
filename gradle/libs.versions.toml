@@ -9,6 +9,7 @@ room = "2.6.1"
 hilt = "2.50"
 hilt-navigation-compose = "1.1.0"
 navigation-compose = "2.7.6"
+appcompat = "1.6.1"
 junit = "4.13.2"
 ksp = "1.9.22-1.0.17"
 
@@ -32,6 +33,7 @@ room-compiler = { group = "androidx.room", name = "room-compiler", version.ref =
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hilt-navigation-compose" }
+appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]
