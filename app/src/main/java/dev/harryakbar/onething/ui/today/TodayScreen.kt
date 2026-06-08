@@ -5,8 +5,7 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,19 +19,25 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -41,7 +46,9 @@ import dev.harryakbar.onething.ui.theme.Accent
 import dev.harryakbar.onething.ui.theme.Background
 import dev.harryakbar.onething.ui.theme.TextPrimary
 import dev.harryakbar.onething.ui.theme.TextSecondary
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.hypot
 
 @Composable
 fun TodayScreen(
@@ -49,18 +56,19 @@ fun TodayScreen(
     viewModel: TodayViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
-    // Track animation trigger
     var animating by remember { mutableStateOf(false) }
-    val animationScale = remember { Animatable(0f) }
+
+    // Ripple from button center
+    val rippleRadius = remember { Animatable(0f) }
+    var rippleOrigin by remember { mutableStateOf(Offset.Zero) }
+    var screenSize by remember { mutableStateOf(IntSize.Zero) }
+
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(uiState) {
         if (uiState is TodayUiState.Completed && !animating) {
-            // Already completed (app re-opened) — navigate immediately
-            val streak = (uiState as TodayUiState.Completed).streak
-            onTaskCompleted(streak)
+            onTaskCompleted((uiState as TodayUiState.Completed).streak)
         }
     }
 
@@ -68,6 +76,7 @@ fun TodayScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Background)
+            .onGloballyPositioned { screenSize = it.size }
     ) {
         when (val state = uiState) {
             is TodayUiState.Loading -> {
@@ -78,41 +87,47 @@ fun TodayScreen(
             }
 
             is TodayUiState.Empty -> {
-                EmptyState(
-                    onTaskSet = { title -> viewModel.setTask(title) }
-                )
+                EmptyState(onTaskSet = { title -> viewModel.setTask(title) })
             }
 
             is TodayUiState.TaskSet -> {
-                // Completion animation overlay
-                if (animating) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .scale(animationScale.value)
-                            .background(Accent)
-                    )
-                }
-
                 TaskSetState(
                     task = state.task,
-                    onComplete = {
+                    onComplete = { buttonCenter ->
                         scope.launch {
                             animating = true
+                            rippleOrigin = buttonCenter
                             hapticFeedback(context)
-                            // Animate fill from 0 to 3 (overshoots screen)
-                            animationScale.animateTo(
-                                targetValue = 3f,
-                                animationSpec = tween(durationMillis = 600)
+                            val maxRadius = hypot(
+                                screenSize.width.toFloat(),
+                                screenSize.height.toFloat()
+                            )
+                            rippleRadius.snapTo(0f)
+                            rippleRadius.animateTo(
+                                targetValue = maxRadius,
+                                animationSpec = tween(
+                                    durationMillis = 650,
+                                    easing = FastOutSlowInEasing
+                                )
                             )
                             viewModel.completeTask(state.task)
                         }
                     }
                 )
+
+                // Canvas ripple overlay drawn on top
+                if (animating) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .drawBehind {
+                                drawRipple(rippleOrigin, rippleRadius.value, Accent)
+                            }
+                    )
+                }
             }
 
             is TodayUiState.Completed -> {
-                // Navigate in LaunchedEffect above, show amber while transitioning
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -122,13 +137,15 @@ fun TodayScreen(
         }
     }
 
-    // Observe completion to navigate after animation
     LaunchedEffect(uiState) {
         if (uiState is TodayUiState.Completed && animating) {
-            val streak = (uiState as TodayUiState.Completed).streak
-            onTaskCompleted(streak)
+            onTaskCompleted((uiState as TodayUiState.Completed).streak)
         }
     }
+}
+
+private fun DrawScope.drawRipple(origin: Offset, radius: Float, color: Color) {
+    drawCircle(color = color, radius = radius, center = origin)
 }
 
 @Composable
@@ -137,7 +154,30 @@ private fun EmptyState(onTaskSet: (String) -> Unit) {
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
 
+    // Staggered word entrance: each word fades + slides up
+    val words = listOf("What's your", "one thing", "today?")
+    val wordAlphas = words.indices.map { i ->
+        val anim = remember { Animatable(0f) }
+        LaunchedEffect(Unit) {
+            delay(i * 120L)
+            anim.animateTo(1f, animationSpec = tween(400, easing = EaseOutCubic))
+        }
+        anim.value
+    }
+    val wordOffsets = words.indices.map { i ->
+        val anim = remember { Animatable(24f) }
+        LaunchedEffect(Unit) {
+            delay(i * 120L)
+            anim.animateTo(0f, animationSpec = tween(400, easing = EaseOutCubic))
+        }
+        anim.value
+    }
+
+    // Input + button fade in after words
+    val inputAlpha = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
+        delay(480L)
+        inputAlpha.animateTo(1f, animationSpec = tween(350))
         focusRequester.requestFocus()
     }
 
@@ -148,23 +188,31 @@ private fun EmptyState(onTaskSet: (String) -> Unit) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "What's your\none thing\ntoday?",
-            style = TextStyle(
-                fontWeight = FontWeight.Black,
-                fontSize = 48.sp,
-                lineHeight = 52.sp,
-                letterSpacing = (-1.5).sp,
-                color = TextPrimary,
-                textAlign = TextAlign.Center
-            )
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            words.forEachIndexed { i, word ->
+                Text(
+                    text = word,
+                    style = TextStyle(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 48.sp,
+                        lineHeight = 54.sp,
+                        letterSpacing = (-1.5).sp,
+                        color = TextPrimary,
+                        textAlign = TextAlign.Center
+                    ),
+                    modifier = Modifier
+                        .alpha(wordAlphas[i])
+                        .offset(y = wordOffsets[i].dp)
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(48.dp))
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .alpha(inputAlpha.value)
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color(0xFF1A1A1A))
                 .padding(horizontal = 20.dp, vertical = 18.dp)
@@ -223,7 +271,8 @@ private fun EmptyState(onTaskSet: (String) -> Unit) {
             enabled = text.isNotBlank(),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp),
+                .height(56.dp)
+                .alpha(inputAlpha.value),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Accent,
@@ -247,8 +296,40 @@ private fun EmptyState(onTaskSet: (String) -> Unit) {
 @Composable
 private fun TaskSetState(
     task: dev.harryakbar.onething.data.DailyTask,
-    onComplete: () -> Unit
+    onComplete: (buttonCenter: Offset) -> Unit
 ) {
+    // Title slides up + fades in
+    val titleAlpha = remember { Animatable(0f) }
+    val titleOffset = remember { Animatable(40f) }
+    LaunchedEffect(Unit) {
+        launch {
+            titleAlpha.animateTo(1f, tween(500, easing = EaseOutCubic))
+        }
+        launch {
+            titleOffset.animateTo(0f, tween(500, easing = EaseOutCubic))
+        }
+    }
+
+    // "TODAY" label fades in slightly before
+    val labelAlpha = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        labelAlpha.animateTo(1f, tween(300))
+    }
+
+    // Button pulses subtly on loop
+    val infiniteTransition = rememberInfiniteTransition(label = "btn_pulse")
+    val btnScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.03f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "btn_scale"
+    )
+
+    var buttonPosition by remember { mutableStateOf(Offset.Zero) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -266,7 +347,8 @@ private fun TaskSetState(
                     fontSize = 12.sp,
                     letterSpacing = 3.sp,
                     color = Accent
-                )
+                ),
+                modifier = Modifier.alpha(labelAlpha.value)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -279,15 +361,26 @@ private fun TaskSetState(
                     lineHeight = 60.sp,
                     letterSpacing = (-2).sp,
                     color = TextPrimary
-                )
+                ),
+                modifier = Modifier
+                    .alpha(titleAlpha.value)
+                    .offset(y = titleOffset.value.dp)
             )
         }
 
         Button(
-            onClick = onComplete,
+            onClick = { onComplete(buttonPosition) },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp),
+                .height(64.dp)
+                .onGloballyPositioned { coords ->
+                    val pos = coords.positionInRoot()
+                    val size = coords.size
+                    buttonPosition = Offset(
+                        pos.x + size.width / 2f,
+                        pos.y + size.height / 2f
+                    )
+                },
             shape = RoundedCornerShape(20.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Accent,
@@ -329,7 +422,5 @@ private fun hapticFeedback(context: Context) {
                 vibrator.vibrate(50)
             }
         }
-    } catch (_: Exception) {
-        // Vibration is best-effort
-    }
+    } catch (_: Exception) {}
 }

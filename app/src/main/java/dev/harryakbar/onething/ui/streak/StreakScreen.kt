@@ -1,5 +1,6 @@
 package dev.harryakbar.onething.ui.streak
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -12,11 +13,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +32,7 @@ import dev.harryakbar.onething.ui.theme.Background
 import dev.harryakbar.onething.ui.theme.OutlineColor
 import dev.harryakbar.onething.ui.theme.TextPrimary
 import dev.harryakbar.onething.ui.theme.TextSecondary
+import kotlinx.coroutines.delay
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,6 +42,24 @@ fun StreakScreen(
     viewModel: StreakViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // Streak number count-up
+    var displayedStreak by remember { mutableIntStateOf(0) }
+    LaunchedEffect(uiState.currentStreak) {
+        val target = uiState.currentStreak
+        val steps = target.coerceAtMost(30)
+        val stepDelay = if (target <= 10) 80L else (800L / steps.coerceAtLeast(1))
+        for (i in 1..target) {
+            displayedStreak = i
+            delay(stepDelay)
+        }
+    }
+
+    // Header fade-in
+    val headerAlpha = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        headerAlpha.animateTo(1f, tween(400))
+    }
 
     Column(
         modifier = Modifier
@@ -68,9 +89,7 @@ fun StreakScreen(
                     )
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Background
-            )
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Background)
         )
 
         Column(
@@ -80,10 +99,12 @@ fun StreakScreen(
                 .padding(horizontal = 24.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Current streak display
+            // Streak counter
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(vertical = 24.dp)
+                modifier = Modifier
+                    .padding(vertical = 24.dp)
+                    .alpha(headerAlpha.value)
             ) {
                 Text(
                     text = "CURRENT STREAK",
@@ -100,7 +121,7 @@ fun StreakScreen(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = uiState.currentStreak.toString(),
+                        text = displayedStreak.toString(),
                         style = TextStyle(
                             fontWeight = FontWeight.Black,
                             fontSize = 80.sp,
@@ -109,10 +130,7 @@ fun StreakScreen(
                         )
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "🔥",
-                        style = TextStyle(fontSize = 48.sp)
-                    )
+                    Text(text = "🔥", style = TextStyle(fontSize = 48.sp))
                 }
                 Text(
                     text = if (uiState.currentStreak == 1) "day" else "days",
@@ -127,7 +145,6 @@ fun StreakScreen(
             HorizontalDivider(color = OutlineColor, thickness = 1.dp)
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Section header
             Text(
                 text = "LAST 30 DAYS",
                 style = TextStyle(
@@ -142,26 +159,16 @@ fun StreakScreen(
                 textAlign = TextAlign.Start
             )
 
-            // 30-day calendar grid (6 rows x 5 cols for 30 items, but we use 7 columns for weekdays)
-            // Just display as a plain 6x5 grid of 30 items
-            CalendarGrid(days = uiState.last30Days)
+            AnimatedCalendarGrid(days = uiState.last30Days)
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Legend
             Row(
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                LegendItem(
-                    color = Accent,
-                    label = "Completed"
-                )
-                LegendItem(
-                    color = Color.Transparent,
-                    label = "Missed",
-                    bordered = true
-                )
+                LegendItem(color = Accent, label = "Completed")
+                LegendItem(color = Color.Transparent, label = "Missed", bordered = true)
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -170,9 +177,44 @@ fun StreakScreen(
 }
 
 @Composable
-private fun CalendarGrid(days: List<DayStatus>) {
+private fun AnimatedCalendarGrid(days: List<DayStatus>) {
     val columns = 7
-    val rows = (days.size + columns - 1) / columns
+
+    val firstDay = days.firstOrNull()
+    val leadingEmpties = if (firstDay != null) (firstDay.date.dayOfWeek.value - 1) % 7 else 0
+    val totalCells = leadingEmpties + days.size
+    val totalRows = (totalCells + columns - 1) / columns
+
+    // Per-cell animation state: one Animatable per actual day cell
+    val cellScales = remember(days.size) {
+        List(days.size) { Animatable(0f) }
+    }
+    val cellAlphas = remember(days.size) {
+        List(days.size) { Animatable(0f) }
+    }
+
+    LaunchedEffect(days.size) {
+        days.indices.forEach { i ->
+            // Wave: row-major delay so they flow left-to-right, top-to-bottom
+            val cellIndex = i + leadingEmpties
+            val delayMs = (cellIndex * 28L).coerceAtMost(700L)
+            kotlinx.coroutines.launch {
+                delay(delayMs)
+                kotlinx.coroutines.launch {
+                    cellScales[i].animateTo(
+                        1f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    )
+                }
+                kotlinx.coroutines.launch {
+                    cellAlphas[i].animateTo(1f, tween(200))
+                }
+            }
+        }
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // Day-of-week header
@@ -196,16 +238,6 @@ private fun CalendarGrid(days: List<DayStatus>) {
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Determine leading empty cells based on first day's day-of-week
-        val firstDay = days.firstOrNull()
-        // Monday = 1, Sunday = 7 in ISO
-        val leadingEmpties = if (firstDay != null) {
-            (firstDay.date.dayOfWeek.value - 1) % 7
-        } else 0
-
-        val totalCells = leadingEmpties + days.size
-        val totalRows = (totalCells + columns - 1) / columns
-
         for (row in 0 until totalRows) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -217,11 +249,12 @@ private fun CalendarGrid(days: List<DayStatus>) {
                     val modifier = Modifier.weight(1f)
 
                     if (dayIndex < 0 || dayIndex >= days.size) {
-                        // Empty spacer cell
                         Spacer(modifier = modifier.aspectRatio(1f).padding(4.dp))
                     } else {
                         DayCell(
                             dayStatus = days[dayIndex],
+                            scale = cellScales[dayIndex].value,
+                            alpha = cellAlphas[dayIndex].value,
                             modifier = modifier
                         )
                     }
@@ -234,6 +267,8 @@ private fun CalendarGrid(days: List<DayStatus>) {
 @Composable
 private fun DayCell(
     dayStatus: DayStatus,
+    scale: Float,
+    alpha: Float,
     modifier: Modifier = Modifier
 ) {
     val monthDayFormatter = DateTimeFormatter.ofPattern("d")
@@ -244,6 +279,8 @@ private fun DayCell(
         modifier = modifier
             .aspectRatio(1f)
             .padding(4.dp)
+            .alpha(alpha)
+            .scale(scale)
     ) {
         Box(
             contentAlignment = Alignment.Center,
@@ -276,11 +313,7 @@ private fun DayCell(
 }
 
 @Composable
-private fun LegendItem(
-    color: Color,
-    label: String,
-    bordered: Boolean = false
-) {
+private fun LegendItem(color: Color, label: String, bordered: Boolean = false) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -290,11 +323,8 @@ private fun LegendItem(
                 .size(16.dp)
                 .clip(CircleShape)
                 .then(
-                    if (bordered) {
-                        Modifier.border(1.dp, OutlineColor, CircleShape)
-                    } else {
-                        Modifier.background(color)
-                    }
+                    if (bordered) Modifier.border(1.dp, OutlineColor, CircleShape)
+                    else Modifier.background(color)
                 )
         )
         Text(
