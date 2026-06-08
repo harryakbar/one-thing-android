@@ -2,6 +2,7 @@ package dev.harryakbar.onething.widget
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -23,26 +24,31 @@ import kotlinx.coroutines.flow.firstOrNull
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+// Color(Long) overload used — 0xFF... hex literals exceed Int so Kotlin infers Long
+private val BgColor       = ColorProvider(Color(0xFF0D0D0D))
+private val AccentColor   = ColorProvider(Color(0xFFE8A838))
+private val TextPrimary   = ColorProvider(Color(0xFFFAFAFA))
+private val TextSecondary = ColorProvider(Color(0xFF888888))
+private val DarkText      = ColorProvider(Color(0xFF0D0D0D))
+
 class OneThingWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val db = AppDatabase.getInstance(context)
-        val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-        val task = db.dailyTaskDao().getByDate(today).firstOrNull()
+        val task = try {
+            val db = AppDatabase.getInstance(context)
+            val today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
+            db.dailyTaskDao().getByDate(today).firstOrNull()
+        } catch (_: Exception) {
+            null
+        }
+
+        val openApp = actionStartActivity(Intent(context, MainActivity::class.java))
 
         provideContent {
-            val bgColor = ColorProvider(android.graphics.Color.parseColor("#0D0D0D"))
-            val accentColor = ColorProvider(android.graphics.Color.parseColor("#E8A838"))
-            val textPrimary = ColorProvider(android.graphics.Color.parseColor("#FAFAFA"))
-            val textSecondary = ColorProvider(android.graphics.Color.parseColor("#888888"))
-            val darkText = ColorProvider(android.graphics.Color.parseColor("#0D0D0D"))
-
-            val openApp = actionStartActivity(Intent(context, MainActivity::class.java))
-
             Box(
                 modifier = GlanceModifier
                     .fillMaxSize()
-                    .background(bgColor)
+                    .background(BgColor)
                     .cornerRadius(20)
                     .clickable(openApp),
                 contentAlignment = Alignment.Center
@@ -58,68 +64,48 @@ class OneThingWidget : GlanceAppWidget() {
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "ONE THING",
-                                style = TextStyle(
-                                    color = accentColor,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp
-                                )
+                                "ONE THING",
+                                style = TextStyle(color = AccentColor, fontWeight = FontWeight.Bold, fontSize = 10.sp)
                             )
                             Spacer(GlanceModifier.height(8.dp))
                             Text(
-                                text = "What's your one thing today?",
-                                style = TextStyle(
-                                    color = textPrimary,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 17.sp
-                                )
+                                "What's your one thing today?",
+                                style = TextStyle(color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                             )
-                            Spacer(GlanceModifier.height(10.dp))
+                            Spacer(GlanceModifier.height(12.dp))
                             Box(
                                 modifier = GlanceModifier
-                                    .background(accentColor)
+                                    .background(AccentColor)
                                     .cornerRadius(12)
                                     .padding(horizontal = 14.dp, vertical = 8.dp)
                             ) {
                                 Text(
-                                    text = "Set it now →",
-                                    style = TextStyle(
-                                        color = darkText,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
-                                    )
+                                    "Set it now →",
+                                    style = TextStyle(color = DarkText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 )
                             }
                         }
                     }
 
                     task.isCompleted -> {
-                        // Completed state
+                        // Completed — amber background
                         Column(
                             modifier = GlanceModifier
                                 .fillMaxSize()
-                                .background(accentColor)
+                                .background(AccentColor)
                                 .cornerRadius(20)
                                 .padding(horizontal = 20.dp, vertical = 16.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "✓  Done today",
-                                style = TextStyle(
-                                    color = darkText,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp
-                                )
+                                "✓  Done today",
+                                style = TextStyle(color = DarkText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             )
                             Spacer(GlanceModifier.height(6.dp))
                             Text(
-                                text = task.title,
-                                style = TextStyle(
-                                    color = darkText,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 17.sp
-                                )
+                                task.title,
+                                style = TextStyle(color = DarkText, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                             )
                         }
                     }
@@ -133,30 +119,18 @@ class OneThingWidget : GlanceAppWidget() {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "TODAY'S ONE THING",
-                                style = TextStyle(
-                                    color = accentColor,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 9.sp
-                                )
+                                "TODAY'S ONE THING",
+                                style = TextStyle(color = AccentColor, fontWeight = FontWeight.Bold, fontSize = 9.sp)
                             )
                             Spacer(GlanceModifier.height(6.dp))
                             Text(
-                                text = task.title,
-                                style = TextStyle(
-                                    color = textPrimary,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 20.sp
-                                )
+                                task.title,
+                                style = TextStyle(color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                             )
                             Spacer(GlanceModifier.height(10.dp))
                             Text(
-                                text = "Tap to complete →",
-                                style = TextStyle(
-                                    color = textSecondary,
-                                    fontWeight = FontWeight.Normal,
-                                    fontSize = 12.sp
-                                )
+                                "Tap to complete →",
+                                style = TextStyle(color = TextSecondary, fontWeight = FontWeight.Normal, fontSize = 12.sp)
                             )
                         }
                     }
