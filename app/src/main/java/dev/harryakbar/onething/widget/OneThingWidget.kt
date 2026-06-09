@@ -24,12 +24,14 @@ import kotlinx.coroutines.flow.firstOrNull
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-// Color(Long) overload used — 0xFF... hex literals exceed Int so Kotlin infers Long
-private val BgColor       = ColorProvider(Color(0xFF0D0D0D))
-private val AccentColor   = ColorProvider(Color(0xFFE8A838))
-private val TextPrimary   = ColorProvider(Color(0xFFFAFAFA))
-private val TextSecondary = ColorProvider(Color(0xFF888888))
-private val DarkText      = ColorProvider(Color(0xFF0D0D0D))
+// New blue-green palette matching app redesign
+private val BgColor       = ColorProvider(Color(0xFFF7F8FA)) // near-white
+private val AccentColor   = ColorProvider(Color(0xFF4F8EF7)) // blue
+private val AccentEndColor = ColorProvider(Color(0xFF29D0BE)) // teal
+private val TextPrimary   = ColorProvider(Color(0xFF0F0F0F)) // near-black
+private val TextSecondary = ColorProvider(Color(0xFF6B7280)) // cool gray
+private val WhiteText     = ColorProvider(Color(0xFFFFFFFF))
+private val OutlineColor  = ColorProvider(Color(0xFFE5E7EB))
 
 class OneThingWidget : GlanceAppWidget() {
 
@@ -55,7 +57,7 @@ class OneThingWidget : GlanceAppWidget() {
             ) {
                 when {
                     task == null -> {
-                        // Empty state
+                        // Empty state — white bg, blue accent CTA
                         Column(
                             modifier = GlanceModifier
                                 .fillMaxSize()
@@ -81,14 +83,14 @@ class OneThingWidget : GlanceAppWidget() {
                             ) {
                                 Text(
                                     "Set it now →",
-                                    style = TextStyle(color = DarkText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    style = TextStyle(color = WhiteText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 )
                             }
                         }
                     }
 
                     task.isCompleted -> {
-                        // Completed — amber background
+                        // Completed — teal/blue background, white text
                         Column(
                             modifier = GlanceModifier
                                 .fillMaxSize()
@@ -100,18 +102,18 @@ class OneThingWidget : GlanceAppWidget() {
                         ) {
                             Text(
                                 "✓  Done today",
-                                style = TextStyle(color = DarkText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                style = TextStyle(color = WhiteText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                             )
                             Spacer(GlanceModifier.height(6.dp))
                             Text(
                                 task.title,
-                                style = TextStyle(color = DarkText, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                                style = TextStyle(color = WhiteText, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                             )
                         }
                     }
 
                     else -> {
-                        // Task set, not yet completed
+                        // Task set, not yet completed — white bg, dark text
                         Column(
                             modifier = GlanceModifier
                                 .fillMaxSize()
