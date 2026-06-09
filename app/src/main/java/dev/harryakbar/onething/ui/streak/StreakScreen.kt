@@ -307,7 +307,7 @@ private fun DayCell(
                 style = TextStyle(
                     fontWeight = if (dayStatus.isCompleted) FontWeight.Bold else FontWeight.Normal,
                     fontSize = 12.sp,
-                    color = if (dayStatus.isCompleted) Color(0xFF0D0D0D) else TextSecondary,
+                    color = if (dayStatus.isCompleted) Color.White else TextSecondary,
                     textAlign = TextAlign.Center
                 )
             )

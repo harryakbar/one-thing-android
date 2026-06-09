@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -22,7 +23,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import dev.harryakbar.onething.ui.theme.Accent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.cos
@@ -57,9 +57,9 @@ fun CompleteScreen(
                 vx = (Random.nextFloat() - 0.5f) * 0.08f,
                 size = 6f + Random.nextFloat() * 10f,
                 color = listOf(
-                    Color(0xFF0D0D0D), Color.White,
-                    Color(0xFFFFD700), Color(0xFFFF6B35),
-                    Color(0xFF00D4AA)
+                    Color.White, Color(0xFFB3D4FF),
+                    Color(0xFF29D0BE), Color(0xFFFFD700),
+                    Color(0xFFFFFFFF).copy(alpha = 0.7f)
                 ).random(),
                 rotation = Random.nextFloat() * 360f,
                 shape = Random.nextInt(2)
@@ -123,10 +123,14 @@ fun CompleteScreen(
         }
     }
 
+    val backgroundBrush = Brush.linearGradient(
+        colors = listOf(Color(0xFF4F8EF7), Color(0xFF29D0BE))
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Accent)
+            .background(backgroundBrush)
     ) {
         // Confetti canvas
         Canvas(modifier = Modifier.fillMaxSize()) {
@@ -179,7 +183,7 @@ fun CompleteScreen(
                         fontSize = 128.sp,
                         lineHeight = 128.sp,
                         letterSpacing = (-4).sp,
-                        color = Color(0xFF0D0D0D)
+                        color = Color.White
                     ),
                     modifier = Modifier
                         .alpha(streakAlpha.value)
@@ -192,7 +196,7 @@ fun CompleteScreen(
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
                         letterSpacing = 1.sp,
-                        color = Color(0xFF0D0D0D).copy(alpha = 0.6f)
+                        color = Color.White.copy(alpha = 0.8f)
                     ),
                     modifier = Modifier.alpha(streakAlpha.value)
                 )
@@ -205,7 +209,7 @@ fun CompleteScreen(
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 22.sp,
                         lineHeight = 30.sp,
-                        color = Color(0xFF0D0D0D),
+                        color = Color.White,
                         textAlign = TextAlign.Center
                     ),
                     modifier = Modifier.alpha(copyAlpha.value)
@@ -224,8 +228,8 @@ fun CompleteScreen(
                         .height(56.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF0D0D0D),
-                        contentColor = Accent
+                        containerColor = Color.White,
+                        contentColor = Color(0xFF4F8EF7)
                     )
                 ) {
                     Text(
@@ -247,7 +251,7 @@ fun CompleteScreen(
                         style = TextStyle(
                             fontWeight = FontWeight.Medium,
                             fontSize = 16.sp,
-                            color = Color(0xFF0D0D0D).copy(alpha = 0.6f)
+                            color = Color.White.copy(alpha = 0.8f)
                         )
                     )
                 }

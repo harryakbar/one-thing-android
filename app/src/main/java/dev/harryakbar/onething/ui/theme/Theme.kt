@@ -2,7 +2,7 @@ package dev.harryakbar.onething.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -10,16 +10,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 // Brand palette
-val Background = Color(0xFF0D0D0D)
-val Accent = Color(0xFFE8A838)
-val TextPrimary = Color(0xFFFAFAFA)
-val TextSecondary = Color(0xFF888888)
-val Surface = Color(0xFF1A1A1A)
-val OutlineColor = Color(0xFF333333)
+val Background = Color(0xFFF7F8FA)
+val Accent = Color(0xFF4F8EF7)
+val AccentEnd = Color(0xFF29D0BE)
+val TextPrimary = Color(0xFF0F0F0F)
+val TextSecondary = Color(0xFF6B7280)
+val Surface = Color(0xFFFFFFFF)
+val OutlineColor = Color(0xFFE5E7EB)
 
-private val DarkColorScheme = darkColorScheme(
+private val LightColorScheme = lightColorScheme(
     primary = Accent,
-    onPrimary = Color(0xFF0D0D0D),
+    onPrimary = Color(0xFFFFFFFF),
     background = Background,
     onBackground = TextPrimary,
     surface = Surface,
@@ -72,7 +73,7 @@ private val OneThingTypography = Typography(
 @Composable
 fun OneThingTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = DarkColorScheme,
+        colorScheme = LightColorScheme,
         typography = OneThingTypography,
         content = content
     )

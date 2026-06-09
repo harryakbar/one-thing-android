@@ -7,13 +7,12 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -23,6 +22,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -43,7 +43,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.harryakbar.onething.ui.theme.Accent
+import dev.harryakbar.onething.ui.theme.AccentEnd
 import dev.harryakbar.onething.ui.theme.Background
+import dev.harryakbar.onething.ui.theme.OutlineColor
+import dev.harryakbar.onething.ui.theme.Surface
 import dev.harryakbar.onething.ui.theme.TextPrimary
 import dev.harryakbar.onething.ui.theme.TextSecondary
 import kotlinx.coroutines.delay
@@ -121,7 +124,7 @@ fun TodayScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .drawBehind {
-                                drawRipple(rippleOrigin, rippleRadius.value, Accent)
+                                drawRipple(rippleOrigin, rippleRadius.value, Color(0xFF4F8EF7))
                             }
                     )
                 }
@@ -214,7 +217,17 @@ private fun EmptyState(onTaskSet: (String) -> Unit) {
                 .fillMaxWidth()
                 .alpha(inputAlpha.value)
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFF1A1A1A))
+                .background(Surface)
+                .then(
+                    Modifier.drawBehind {
+                        drawRoundRect(
+                            color = OutlineColor,
+                            size = size,
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx()),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.dp.toPx())
+                        )
+                    }
+                )
                 .padding(horizontal = 20.dp, vertical = 18.dp)
         ) {
             BasicTextField(
@@ -261,32 +274,34 @@ private fun EmptyState(onTaskSet: (String) -> Unit) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Button(
-            onClick = {
-                if (text.isNotBlank()) {
-                    keyboardController?.hide()
-                    onTaskSet(text)
-                }
-            },
-            enabled = text.isNotBlank(),
+        val gradientBrush = Brush.linearGradient(
+            colors = listOf(Accent, AccentEnd)
+        )
+        val disabledColor = OutlineColor
+
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
-                .alpha(inputAlpha.value),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Accent,
-                contentColor = Color(0xFF0D0D0D),
-                disabledContainerColor = Color(0xFF333333),
-                disabledContentColor = TextSecondary
-            )
+                .alpha(inputAlpha.value)
+                .clip(RoundedCornerShape(16.dp))
+                .background(
+                    if (text.isNotBlank()) gradientBrush
+                    else Brush.linearGradient(listOf(disabledColor, disabledColor))
+                )
+                .clickable(enabled = text.isNotBlank()) {
+                    keyboardController?.hide()
+                    onTaskSet(text)
+                },
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "SET FOR TODAY",
                 style = TextStyle(
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 14.sp,
-                    letterSpacing = 2.sp
+                    letterSpacing = 2.sp,
+                    color = if (text.isNotBlank()) Color.White else TextSecondary
                 )
             )
         }
@@ -330,6 +345,10 @@ private fun TaskSetState(
 
     var buttonPosition by remember { mutableStateOf(Offset.Zero) }
 
+    val gradientBrush = Brush.linearGradient(
+        colors = listOf(Accent, AccentEnd)
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -368,11 +387,12 @@ private fun TaskSetState(
             )
         }
 
-        Button(
-            onClick = { onComplete(buttonPosition) },
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(64.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(gradientBrush)
                 .onGloballyPositioned { coords ->
                     val pos = coords.positionInRoot()
                     val size = coords.size
@@ -380,19 +400,17 @@ private fun TaskSetState(
                         pos.x + size.width / 2f,
                         pos.y + size.height / 2f
                     )
-                },
-            shape = RoundedCornerShape(20.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Accent,
-                contentColor = Color(0xFF0D0D0D)
-            )
+                }
+                .clickable { onComplete(buttonPosition) },
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "COMPLETE",
                 style = TextStyle(
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 16.sp,
-                    letterSpacing = 3.sp
+                    letterSpacing = 3.sp,
+                    color = Color.White
                 )
             )
         }
