@@ -24,11 +24,23 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Signing config is applied by CI via environment variables.
+            // Locally, unsigned release builds are fine for testing.
+            val keystoreFile = System.getenv("KEYSTORE_PATH")
+            if (keystoreFile != null) {
+                signingConfig = signingConfigs.create("release").apply {
+                    storeFile = file(keystoreFile)
+                    storePassword = System.getenv("STORE_PASSWORD")
+                    keyAlias = System.getenv("KEY_ALIAS")
+                    keyPassword = System.getenv("KEY_PASSWORD")
+                }
+            }
         }
     }
     compileOptions {
